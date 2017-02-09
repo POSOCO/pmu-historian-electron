@@ -107,6 +107,8 @@ function doSoapRequest(bodyString, onResult) {
             'Authorization': "Basic " + new Buffer(username_ + ":" + password_, "utf8").toString("base64")
         }
     };
+	
+	// If we want to receive chunks of binary data - http://stackoverflow.com/questions/17836438/getting-binary-content-in-node-js-with-http-request
     var req = https.request(options, function (res) {
         var output = '';
         console.log(options.host + ':' + res.statusCode);
@@ -170,6 +172,8 @@ function getData() {
             < /soap:Body>\
            < /soap:Envelope>';
     doSoapRequest(soapMessage, function (statusCode, output) {
+		// Convert the response to byte array - http://stackoverflow.com/questions/6226189/how-to-convert-a-string-to-bytearray
+		// convert 8 bytes to signed int64 number - https://github.com/broofa/node-int64 , https://www.npmjs.com/package/int64-buffer
         var str = statusCode + "---" + output;
         console.log(str);
         if (mainWindow != null) {
