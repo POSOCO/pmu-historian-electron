@@ -5,6 +5,7 @@ var Tray = require('tray');
 
 //var http = require("http");
 var https = require("https");
+var wsse = require('wsse');
 
 // Keep a global reference of the window object, if you don't, the window will
 // be closed automatically when the JavaScript object is garbage collected.
@@ -55,7 +56,7 @@ app.on('ready', function () {
         if (!app.isQuiting) {
             event.preventDefault();
             mainWindow.hide();
-            appIcon.displayBalloon({icon:"./favicon.ico", title: "Awesome Title", content: "Awesome Content"});
+            appIcon.displayBalloon({icon: "./favicon.ico", title: "Awesome Title", content: "Awesome Content"});
             setTimeout(function () {
                 appIcon.emit("balloon-closed");
             }, 500);
@@ -77,13 +78,12 @@ app.on('ready', function () {
         }
     ]);
 
-    var appIcon = null;
-    appIcon = new Tray('./favicon.ico');
+    var appIcon = new Tray(__dirname + '/favicon.ico');
 
     appIcon.setToolTip('PMU Historian App');
     appIcon.setContextMenu(contextMenu);
 
-    appIcon.on("double-click", function(){
+    appIcon.on("double-click", function () {
         mainWindow.show();
     });
 });
@@ -93,7 +93,7 @@ var host_ = "172.16.183.131";
 var path_ = "/eterra-ws/HistoricalDataProvider";
 var port_ = 24721;
 var username_ = "perf1";
-var password_ = "p@ssword";
+var password_ = "Abcd@1234";
 
 // Soap Request function
 function doSoapRequest(bodyString, onResult) {
@@ -101,12 +101,15 @@ function doSoapRequest(bodyString, onResult) {
         host: host_,
         port: port_,
         path: path_,
+        rejectUnauthorized: false,
         method: 'POST',
         headers: {
             'Content-Type': "application/soap+xml; charset=\"utf-8\"",
-            'Authorization': "Basic " + new Buffer(username_ + ":" + password_, "utf8").toString("base64")
+            'Content-Length': Buffer.byteLength(bodyString)
         }
     };
+
+    // If we want to receive chunks of binary data - http://stackoverflow.com/questions/17836438/getting-binary-content-in-node-js-with-http-request
     var req = https.request(options, function (res) {
         var output = '';
         console.log(options.host + ':' + res.statusCode);
@@ -133,15 +136,35 @@ function doSoapRequest(bodyString, onResult) {
 }
 
 function discoverServer() {
+    var token = wsse({username: username_, password: password_});
+    var nonceText = token.getNonceBase64();
+    var createdText = token.getCreated();
+
+    //token string testing
+    console.log(token.toString());
+    //token string testing
+
     var soapMessage =
-        '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:dat="http://www.eterra.com/public/services/data/dataTypes">\
-       <soap:Header/>\
-       <soap:Body>\
-          <dat:DiscoverServerRequest>?</dat:DiscoverServerRequest>\
-       </soap:Body>\
+        '<soap:Envelope xmlns:dat="http://www.eterra.com/public/services/data/dataTypes" xmlns:soap="http://www.w3.org/2003/05/soap-envelope">\
+        <soap:Header>\
+    <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">\
+        <wsse:UsernameToken wsu:Id="UsernameToken-329D41BF01D5F8E66114867472731424">\
+        <wsse:Username>' + username_ + '</wsse:Username>\
+    <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">' + password_ + '</wsse:Password>\
+    <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">' + nonceText + '</wsse:Nonce>\
+    <wsu:Created>' + createdText + '</wsu:Created>\
+    </wsse:UsernameToken>\
+    </wsse:Security>\
+    </soap:Header>\
+    <soap:Body>\
+    <dat:DiscoverServerRequest>?</dat:DiscoverServerRequest>\
+    </soap:Body>\
     </soap:Envelope>';
+
+    console.log(soapMessage);
+
     doSoapRequest(soapMessage, function (statusCode, output) {
-        var str = statusCode + "---" + output
+        var str = statusCode + "---" + output;
         console.log(str);
         if (mainWindow != null) {
             mainWindow.webContents.send('console-data', {message: str});
@@ -150,26 +173,48 @@ function discoverServer() {
 }
 
 function getData() {
+    var token = wsse({username: username_, password: password_});
+    var nonceText = token.getNonceBase64();
+    var createdText = token.getCreated();
+
+    //token string testing
+    console.log(token.toString());
+    //token string testing
+
     var soapMessage =
-        '<soap:Envelope xmlns:soap="http://www.w3.org/2003/05/soap-envelope" xmlns:dat="http://www.eterra.com/public/services/data/dataTypes">\
-     <soap:Header/>\
-     <soap:Body>\
-        <dat:DataRequest>\
-           <measurementIDList>\
-              <!--Zero or more repetitions:-->\
-              <measurementId>525</measurementId>\
-            </measurementIDList>\
-           <timeRange>\
-              <startTime>2017-02-02T01:00:05.000+05:30</startTime>\
-              <endTime>2017-02-02T01:00:07.000+05:30</endTime>\
-           </timeRange>\
-           <!--Optional:-->\
-           <sampleRate>25</sampleRate>\
-           <!--Optional:-->\
-            < /dat:DataRequest>\
-            < /soap:Body>\
-           < /soap:Envelope>';
+        '<soap:Envelope xmlns:dat="http://www.eterra.com/public/services/data/dataTypes" xmlns:soap="http://www.w3.org/2003/05/soap-envelope">\
+        <soap:Header>\
+    <wsse:Security xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd" xmlns:wsu="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd">\
+        <wsse:UsernameToken wsu:Id="UsernameToken-7E753FA7975A48557514868460026363">\
+        <wsse:Username>' + username_ + '</wsse:Username>\
+    <wsse:Password Type="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-username-token-profile-1.0#PasswordText">' + password_ + '</wsse:Password>\
+    <wsse:Nonce EncodingType="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-soap-message-security-1.0#Base64Binary">' + nonceText + '/3rl4w==</wsse:Nonce>\
+    <wsu:Created>' + createdText + '</wsu:Created>\
+    </wsse:UsernameToken>\
+    </wsse:Security>\
+    </soap:Header>\
+    <soap:Body>\
+    <dat:DataRequest>\
+    <measurementIDList>\
+        <!--Zero or more repetitions:-->\
+    <measurementId>525</measurementId>\
+    </measurementIDList>\
+    <timeRange>\
+    <startTime>2017-02-02T01:00:05.000+05:30</startTime>\
+    <endTime>2017-02-02T01:00:07.000+05:30</endTime>\
+    </timeRange>\
+        <!--Optional:-->\
+    <sampleRate>25</sampleRate>\
+        <!--Optional:-->\
+    </dat:DataRequest>\
+    </soap:Body>\
+    </soap:Envelope>';
+
+    console.log(soapMessage);
+
     doSoapRequest(soapMessage, function (statusCode, output) {
+        // Convert the response to byte array - http://stackoverflow.com/questions/6226189/how-to-convert-a-string-to-bytearray
+        // convert 8 bytes to signed int64 number - https://github.com/broofa/node-int64 , https://www.npmjs.com/package/int64-buffer
         var str = statusCode + "---" + output;
         console.log(str);
         if (mainWindow != null) {
