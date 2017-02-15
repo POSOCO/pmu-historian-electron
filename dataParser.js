@@ -498,3 +498,5 @@ function PhasorPointBinaryDataParser() {
         return data.readFloatBE(offset);
     }
 }
+
+exports.parser = PhasorPointBinaryDataParser;
