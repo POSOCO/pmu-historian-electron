@@ -5,7 +5,8 @@
   "main": "main.js",
   "dependencies": {
     "electron-prebuilt": "^0.35.2",
-    "wsse": "2.4.0"
+    "wsse": "2.4.0",
+    "int64-buffer": "0.1.9"
   },
   "scripts": {
     "start": "electron main.js"
