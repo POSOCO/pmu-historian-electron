@@ -43,7 +43,7 @@ function PhasorPointBinaryDataParser() {
             var frameCounter = 0;
 
             while (_offset < buffSize) {
-                var timeStamp = GetTimeStamp(dataRate, firstRecordTime, doesBodyHasTimeStamp, frameCounter);
+                var timeStamp = GetTimeStamp1(dataRate, firstRecordTime, doesBodyHasTimeStamp, frameCounter);
 
                 GetAnalogMeasValues(analogMeasIds, valuesPerAnalogMeas, statusId, timeStamp);
 
@@ -67,7 +67,7 @@ function PhasorPointBinaryDataParser() {
 /// <param name="doesBodyHasTimeStamp"></param>
 /// <param name="frameCounter"></param>
 /// <returns></returns>
-    function GetTimeStamp(dataRate, firstRecordTime, doesBodyHasTimeStamp, frameCounter) {
+    function GetTimeStamp1(dataRate, firstRecordTime, doesBodyHasTimeStamp, frameCounter) {
         var timeStamp;
 
         if (doesBodyHasTimeStamp) {
@@ -76,7 +76,7 @@ function PhasorPointBinaryDataParser() {
         }
         else {
             // Timestamp = First data record timestamp + (20 * record number).
-            timeStamp = firstRecordTime.AddSeconds(frameCounter * 1.0 / Math.Abs(dataRate));
+            timeStamp = firstRecordTime + 1000 * (frameCounter * 1.0 / Math.abs(dataRate));
             //_logger.Write("Calculated TimeStamp: ", timeStamp.ToString(CultureInfo.InvariantCulture));
         }
 
@@ -99,7 +99,8 @@ function PhasorPointBinaryDataParser() {
 /// <param name="timeStamp"></param>
     function GetAnalogMeasValues(analogMeasIds, valuesPerAnalogMeas, statusIdentifier, timeStamp) {
         // Parse analog vaues
-        analogMeasIds.forEach(function (measurement) {
+        for (var k = 0; k < analogMeasIds.length; k++) {
+            var measurement = analogMeasIds[k];
             var qualityStatus = "good";
             var qualityReason = "none";
 
@@ -123,11 +124,11 @@ function PhasorPointBinaryDataParser() {
                 }
                 // Combination of 1 and 2
                 else if (statusIdentifier == 3) {
-                    var statusbyte = ReadByte();
+                    statusbyte = ReadByte();
                     qualityStatus = GetQualityStatus(statusbyte);
                     qualityReason = GetQualityReason(statusbyte);
 
-                    var nofBytes = 1 + Math.floor((valuesPerAnalogMeas - 1) / 8);
+                    nofBytes = 1 + Math.floor((valuesPerAnalogMeas - 1) / 8);
                     _offset += nofBytes;
                 }
             }
@@ -152,15 +153,14 @@ function PhasorPointBinaryDataParser() {
                 list.push(pmuData);
                 _data[measurement] = list;
             }
-        })
-
+        }
     }
 
     function GetQualityReason(statusbyte) {
-        if ((statusbyte & (01 << PMUErrorPosition)) != 0) {
+        if ((statusbyte & (1 << PMUErrorPosition)) != 0) {
             return "PMUError";
         }
-        else if ((statusbyte & (01 << PMUSyncPosition)) != 0) {
+        else if ((statusbyte & (1 << PMUSyncPosition)) != 0) {
             return "PMUSync";
         }
         return "none";
@@ -169,7 +169,7 @@ function PhasorPointBinaryDataParser() {
     function GetQualityStatus(statusbyte) {
         if ((statusbyte & (11 << qualityPosition)) == badData)
             return "garbage";
-        else if ((statusbyte & (01 << qualityPosition)) == suspectData)
+        else if ((statusbyte & (1 << qualityPosition)) == suspectData)
             return "suspect";
         //else if ((statusbyte & (10 << qualityPosition)) != replacedData)
         return "good";
@@ -183,7 +183,7 @@ function PhasorPointBinaryDataParser() {
     function GetDigitalMeasValues(digitalMeasId, statusIdentifier) {
         var valuesPerDigitalMeas = 1;
 
-        for (var i = 0; i < digitalMeasId; i++) {
+        for (var i = 0; i < digitalMeasId.length; i++) {
             var digitalMeasurement = digitalMeasId[i];
             if (statusIdentifier > 0) {
                 if (statusIdentifier == 1) {
@@ -203,7 +203,7 @@ function PhasorPointBinaryDataParser() {
                 // Combination of 1 and 2
                 else if (statusIdentifier == 3) {
                     statusbyte = ReadByte();
-                    var nofBytes = 1 + Math.floor((valuesPerDigitalMeas - 1) / 8);
+                    nofBytes = 1 + Math.floor((valuesPerDigitalMeas - 1) / 8);
                     _offset += nofBytes;
                 }
             }
@@ -495,7 +495,7 @@ function PhasorPointBinaryDataParser() {
 /// <param name="offset"></param>
 /// <returns></returns>
     function ReadSingleBigEndian(data, offset) {
-        return data.readFloatBE(offset);
+        return Buffer.from(data.slice(offset, offset + 4)).readFloatBE(0);
     }
 }
 
